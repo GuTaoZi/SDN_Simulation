@@ -1,39 +1,3 @@
-# class NetNode:
-#     def __init__(self, device):
-#         self.device = device
-#         self.adjacent = []
-#         self.rtable = {}
-#         self.rtable[0] = self
-
-#     def remove(self):
-#         self.device = None
-#         self.adjacent = None
-#         self.rtable = None
-
-#     def has_port(self,port):
-#         return any(iport.dpid == port.dpid and iport.port_no == port.port_no for iport in [self.owner.port])
-
-# class HostNode(NetNode):
-#     counter = 0
-
-#     def __init__(self, device):
-#         super().__init__(device)
-#         self.id = HostNode.counter
-#         HostNode.counter
-    
-
-
-# class SwitchNode(NetNode):
-#     counter = 0
-
-#     def __init__(self, device):
-#         super().__init__(device)
-#         self.id = SwitchNode.counter
-#         SwitchNode.counter += 1
-
-
-# What to do when removing nodes? 
-
 class Graph:
     def __init__(self):
         self.vertices = {}
