@@ -120,6 +120,7 @@ class ControllerApp(app_manager.RyuApp):
                 # TODO: handle other protocols like ARP 
                 pass
             else:
+                print("+++ DHCP packet received")
                 DHCPServer.handle_dhcp(datapath, inPort, pkt)      
             return 
         except Exception as e:

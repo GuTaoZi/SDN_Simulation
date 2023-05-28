@@ -35,6 +35,10 @@ class topo_manager:
                        dl_vlan=VLANID_NONE,
                        dl_dst=dl_dst,
                        actions=actions)
+        
+    def del_forwarding(self, datapath):
+        ofctl = OfCtl.factory(dp=datapath, logger=None)
+        ofctl.delete_flow()
 
     def build(self, dev1, dev2, port):
         if (dev1 not in self.graph):
@@ -42,7 +46,7 @@ class topo_manager:
         self.graph[dev1][dev2] = port
 
     def dijkstra(self, switch):
-        print(f"dijkstra for {switch.device.dp.id}")
+        # print(f"dijkstra for {switch.device.dp.id}")
         INF = float('inf')
         dist = {x: INF for x in self.vertex}
         dist[switch] = 0
@@ -52,15 +56,18 @@ class topo_manager:
         q.put((dist[switch], switch))
         while (not q.empty()):
             dis, top = q.get()
-            print(f"top {top.device.dp.id}")
+            # print(f"top {top.device.dp.id}")
             vis.append(top)
             for adj_device, port in self.graph[top].items():
                 if adj_device in self.switches and port._state != 1:
-                    print(f"adj_device {adj_device.device.dp.id}")
+                    # print(f"adj_device {adj_device.device.dp.id}")
                     if (dist[adj_device] > dist[top] + 1):
                         dist[adj_device] = dist[top] + 1
                         next_hop[adj_device] = (top, port)
                         q.put((dist[adj_device], adj_device))
+        print(f"current next_hop table: ")
+        for key in next_hop.keys():
+            print(f"{key.device.dp.id} -> {next_hop[key][0].device.dp.id}, {next_hop[key][1].port_no}")
         return dist, next_hop
 
     def host_shortest_path(self, host):
@@ -86,6 +93,9 @@ class topo_manager:
     
     def update_topology(self):
         print(f"update_topology() invoked")
+        print(f"deleting current flow tables")
+        for switch in self.switches:
+            self.del_forwarding(switch.device.dp)
         for host in self.hosts:
             self.host_shortest_path(host)
 
