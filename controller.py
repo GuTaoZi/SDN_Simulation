@@ -14,22 +14,23 @@ from ryu.lib.packet import udp
 from dhcp import DHCPServer
 
 from graph import *
+from device import *
 
 class ControllerApp(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
         super(ControllerApp, self).__init__(*args, **kwargs)
-        self.graph = Graph()    # Graph
+        self.topo = topo_manager()
 
     @set_ev_cls(event.EventSwitchEnter)
     def handle_switch_add(self, ev: event.EventSwitchEnter):
         """
         Event handler indicating a switch has come online.
         """
-        new_switch: Switch = ev.switch
-        dpid = new_switch.dp.id
-        self.topo._register(new_switch.dp)
+        new_switch = MyDevice(ev.switch)
+        print(f"adding switch {ev.switch.dp.id}")
+        self.topo.switch_enter(new_switch)
         
 
     @set_ev_cls(event.EventSwitchLeave)
@@ -37,8 +38,11 @@ class ControllerApp(app_manager.RyuApp):
         """
         Event handler indicating a switch has been removed
         """
-        del_switch = ev.switch
-        dpid = del_switch.dp.id
+        print(f"deleting switch {ev.switch.dp.id}")
+        for switch in self.topo.switches:
+            if(switch.device.dp.id==ev.switch.dp.id):
+                self.topo.switch_leave(switch)
+                break
 
 
     @set_ev_cls(event.EventHostAdd)
@@ -48,17 +52,29 @@ class ControllerApp(app_manager.RyuApp):
         This handler is automatically triggered when a host sends an ARP response.
         """ 
         # TODO:  Update network topology and flow rules
-        new_host = ev.host
-        port = new_host.port
-        mac = new_host.mac
+        print(f"adding host {ev.host.mac}")
+        new_host = MyDevice(ev.host)
+        port = ev.host.port
+        for switch in self.topo.switches:
+            if(switch.device.dp.id==port.dpid):
+                self.topo.host_add(new_host,switch,port)
+                break
         
 
     @set_ev_cls(event.EventLinkAdd)
-    def handle_link_add(self, ev):
+    def handle_link_add(self, ev:event.EventLinkAdd):
         """
         Event handler indicating a link between two switches has been added
         """
         # TODO:  Update network topology and flow rules
+        print(f"adding link {ev.link.src.dipid}->{ev.link.dst.dpid}")
+        for switch in self.topo.switches:
+            if(switch.device.dp.id==ev.link.src.dpid):
+                src_switch=switch
+            if(switch.device.dp.id==ev.link.dst.dpid):
+                dst_switch=switch
+        self.topo.link_add(src_switch,dst_switch,ev.link.src,ev.link.dst)
+        self.topo.update_topology()
 
     @set_ev_cls(event.EventLinkDelete)
     def handle_link_delete(self, ev):
@@ -66,6 +82,14 @@ class ControllerApp(app_manager.RyuApp):
         Event handler indicating when a link between two switches has been deleted
         """
         # TODO:  Update network topology and flow rules
+        print(f"deleting link {ev.link.src.dipid}->{ev.link.dst.dpid}")
+        for switch in self.topo.switches:
+            if(switch.device.dp.id==ev.link.src.dpid):
+                src_switch=switch
+            if(switch.device.dp.id==ev.link.dst.dpid):
+                dst_switch=switch
+        self.topo.link_delete(src_switch,dst_switch,ev.link.src,ev.link.dst)
+        self.topo.update_topology()
    
         
 
@@ -76,6 +100,7 @@ class ControllerApp(app_manager.RyuApp):
         This includes links for hosts as well as links between switches.
         """
         # TODO:  Update network topology and flow rules
+        for dev in self.
 
 
 

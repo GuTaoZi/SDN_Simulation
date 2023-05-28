@@ -110,3 +110,10 @@ class topo_manager:
     def link_delete(self, dev1, dev2):
         del self.graph[dev1][dev2]
         del self.graph[dev2][dev1]
+    
+    def port_modify(self,port,state):
+        for device in self.vertex:
+            neighborhood = self.graph[device]
+            for adj_device in neighborhood:
+                if(adj_device.device.dp.id==port.dpid and neighborhood[adj_device].port_no==port.port_no):
+                    neighborhood[adj_device]._state=state
