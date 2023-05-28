@@ -1,3 +1,39 @@
+# class NetNode:
+#     def __init__(self, device):
+#         self.device = device
+#         self.adjacent = []
+#         self.rtable = {}
+#         self.rtable[0] = self
+
+#     def remove(self):
+#         self.device = None
+#         self.adjacent = None
+#         self.rtable = None
+
+#     def has_port(self,port):
+#         return any(iport.dpid == port.dpid and iport.port_no == port.port_no for iport in [self.owner.port])
+
+# class HostNode(NetNode):
+#     counter = 0
+
+#     def __init__(self, device):
+#         super().__init__(device)
+#         self.id = HostNode.counter
+#         HostNode.counter
+    
+
+
+# class SwitchNode(NetNode):
+#     counter = 0
+
+#     def __init__(self, device):
+#         super().__init__(device)
+#         self.id = SwitchNode.counter
+#         SwitchNode.counter += 1
+
+
+# What to do when removing nodes? 
+
 class Graph:
     def __init__(self):
         self.vertices = {}
@@ -12,23 +48,23 @@ class Graph:
                 del self.vertices[neighbor][vertex]
             del self.vertices[vertex]
             self.vertices.pop(vertex)
-    
-    def add_uni_edge(self, vertex1, vertex2, weight = 1):
+
+    def add_uni_edge(self, vertex1, vertex2, weight=1):
         if vertex1 in self.vertices and vertex2 in self.vertices:
             self.vertices[vertex1][vertex2] = weight
 
-    def add_un_edge(self, vertex1, vertex2, weight = 1):
+    def add_un_edge(self, vertex1, vertex2, weight=1):
         self.add_uni_edge(vertex1, vertex2, weight)
         self.add_uni_edge(vertex2, vertex1, weight)
 
     def remove_uni_edge(self, vertex1, vertex2):
         if vertex1 in self.vertices and vertex2 in self.vertices:
             del self.vertices[vertex1][vertex2]
-    
+
     def remove_un_edge(self, vertex1, vertex2):
         self.remove_uni_edge(vertex1, vertex2)
         self.remove_uni_edge(vertex2, vertex1)
-    
+
     def floyd(self):
         INF = float('inf')
         n = len(self.vertices)
@@ -56,7 +92,7 @@ class Graph:
 
 if __name__ == '__main__':
     g = Graph()
-    
+
     g.add_vertex('A')
     g.add_vertex('B')
     g.add_vertex('C')
@@ -67,9 +103,9 @@ if __name__ == '__main__':
     g.add_un_edge('B', 'C', 1)
     g.add_un_edge('B', 'D', 6)
     g.add_un_edge('C', 'D', 3)
-    
+
     dist, next_hop = g.floyd()
-    
+
     print(dist)
-    
+
     print(next_hop)
