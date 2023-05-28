@@ -6,7 +6,7 @@ from ofctl_utilis import *
 import queue
 
 
-class MyDevice:
+class MyDevice(object):
     def __init__(self, device):
         self.device = device
 
@@ -15,6 +15,9 @@ class MyDevice:
 
     def is_switch(self):
         return isinstance(self.device, Switch)
+    
+    def __lt__(self,other):
+        return False
 
 
 class topo_manager:
@@ -39,6 +42,7 @@ class topo_manager:
         self.graph[dev1][dev2] = port
 
     def dijkstra(self, switch):
+        print(f"dijkstra for {switch.device.dp.id}")
         INF = float('inf')
         dist = {x: INF for x in self.vertex}
         dist[switch] = 0
@@ -46,11 +50,13 @@ class topo_manager:
         vis = self.hosts.copy()
         q = queue.PriorityQueue()
         q.put((dist[switch], switch))
-        while (not q.empty):
+        while (not q.empty()):
             dis, top = q.get()
+            print(f"top {top.device.dp.id}")
             vis.append(top)
             for adj_device, port in self.graph[top].items():
                 if adj_device in self.switches and port._state != 1:
+                    print(f"adj_device {adj_device.device.dp.id}")
                     if (dist[adj_device] > dist[top] + 1):
                         dist[adj_device] = dist[top] + 1
                         next_hop[adj_device] = (top, port)
@@ -61,6 +67,7 @@ class topo_manager:
         for key in self.graph[host].keys():
             adj_switch1 = key
             host_port1 = self.graph[host][key]
+            print(f"src host {host.device.mac} connect to switch {adj_switch1.device.dp.id}")
         distance, next_hop = self.dijkstra(adj_switch1)
         for dst_host in self.hosts:
             if(dst_host==host):
@@ -68,7 +75,8 @@ class topo_manager:
             dst_mac = dst_host.device.mac
             for key in self.graph[dst_host].keys():
                 adj_switch2 = key
-                host_port2 = self.graph[host][key]
+                host_port2 = self.graph[dst_host][key]
+                print(f"dst host {dst_host.device.mac} connect to switch {adj_switch2.device.dp.id}")
             it = adj_switch2
             while(it!=adj_switch1):
                 former_switch,port = next_hop[it]
@@ -77,6 +85,7 @@ class topo_manager:
                 it=former_switch
     
     def update_topology(self):
+        print(f"update_topology() invoked")
         for host in self.hosts:
             self.host_shortest_path(host)
 

@@ -59,6 +59,7 @@ class ControllerApp(app_manager.RyuApp):
             if(switch.device.dp.id==port.dpid):
                 self.topo.host_add(new_host,switch,port)
                 break
+        self.topo.update_topology()
         
 
     @set_ev_cls(event.EventLinkAdd)
@@ -67,7 +68,7 @@ class ControllerApp(app_manager.RyuApp):
         Event handler indicating a link between two switches has been added
         """
         # TODO:  Update network topology and flow rules
-        print(f"adding link {ev.link.src.dipid}->{ev.link.dst.dpid}")
+        print(f"adding link {ev.link.src.dpid}->{ev.link.dst.dpid}")
         for switch in self.topo.switches:
             if(switch.device.dp.id==ev.link.src.dpid):
                 src_switch=switch
@@ -94,15 +95,18 @@ class ControllerApp(app_manager.RyuApp):
         
 
     @set_ev_cls(event.EventPortModify)
-    def handle_port_modify(self, ev):
+    def handle_port_modify(self, ev:event.EventPortModify):
         """
         Event handler for when any switch port changes state.
         This includes links for hosts as well as links between switches.
         """
         # TODO:  Update network topology and flow rules
-        for dev in self.
-
-
+        print(f"modifying port {ev.port.dpid} {ev.port.port_no}")
+        for switch in self.topo.switches:
+            if(switch.device.dp.id==ev.port.port_dpid):
+                break
+        self.topo.port_modify(ev.port,ev.port._state)
+        self.topo.update_topology()
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in_handler(self, ev):
