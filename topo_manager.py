@@ -1,6 +1,4 @@
 from ryu.topology.switches import *
-from ryu.ofproto import ofproto_v1_0
-from ryu.ofproto import ofproto_v1_0_parser
 from ryu.lib.packet import *
 from ofctl_utilis import *
 from device import MyDevice

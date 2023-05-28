@@ -18,6 +18,7 @@ def ping(host, dst, count=1, timeout=1):
 
 def send_arp(node, count=1):
     node.cmd('arping -c %s -A -I %s-eth0 %s' % (count, node.name, node.IP()))
+    print(f"arped node")
 
 
 def send_dhcp(node):
@@ -76,6 +77,7 @@ def run_mininet():
 
     net.start()
     time.sleep(1)
+    print(f"Now do arp all")
     do_arp_all(net)
     CLI(net)
 

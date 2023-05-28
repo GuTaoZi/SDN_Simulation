@@ -1,3 +1,4 @@
+from ryu.topology.switches import *
 class MyDevice(object):
     def __init__(self, device):
         self.device = device
