@@ -13,8 +13,8 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import udp
 from dhcp import DHCPServer
 
-from graph import *
-from device import *
+from device import MyDevice
+from topo_manager import topo_manager
 
 class ControllerApp(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
@@ -120,7 +120,7 @@ class ControllerApp(app_manager.RyuApp):
                 # TODO: handle other protocols like ARP 
                 pass
             else:
-                print("+++ DHCP packet received")
+                print(f"+++ DHCP packet received")
                 DHCPServer.handle_dhcp(datapath, inPort, pkt)      
             return 
         except Exception as e:
