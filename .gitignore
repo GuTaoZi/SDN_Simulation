@@ -280,3 +280,4 @@ cython_debug/
 
 .vscode/settings.json
 .gitignore
+test.ipynb
