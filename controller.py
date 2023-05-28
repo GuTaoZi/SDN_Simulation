@@ -23,12 +23,36 @@ class ControllerApp(app_manager.RyuApp):
         """
         Event handler indicating a switch has come online.
         """
+        switch = ev.switch
+        datapath = switch.dp
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        print(f"Switch {datapath.id} connected")
+
+        # Install a default drop rule to prevent unwanted traffic
+        match = parser.OFPMatch()
+        actions = []
+        self.add_flow(datapath, 0, match, actions)
 
     @set_ev_cls(event.EventSwitchLeave)
     def handle_switch_delete(self, ev):
         """
         Event handler indicating a switch has been removed
         """
+        switch = ev.switch
+        datapath = switch.dp
+        ofproto = datapath.ofproto
+        print(f"Switch {datapath.id} disconnected")
+        
+    def add_flow(self, datapath, priority, match, actions):
+        """
+        Install a flow entry on a switch
+        """
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        mod = parser.OFPFlowMod(datapath=datapath, priority=priority, match=match, instructions=inst)
+        datapath.send_msg(mod)
 
 
     @set_ev_cls(event.EventHostAdd)
