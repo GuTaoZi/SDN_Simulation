@@ -41,24 +41,46 @@ class DHCPServer():
         eth = pkt.get_protocol(ethernet.ethernet)
         ip = pkt.get_protocol(ipv4.ipv4)
         dhcp_pkt = pkt.get_protocol(dhcp.dhcp)
+        
+        req_ip = "0.0.0.0"
+        
+        for opts in dhcp_pkt.options:
+            if opts[0] == dhcp.DHCP_REQUESTED_IP_ADDR_OPT:
+                req_ip = opts[1]
+        
+        if cls.declare_use_ip(req_ip):
 
-        options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, dhcp.DHCP_ACK),
-                   (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr),
-                   (dhcp.DHCP_SUBNET_MASK_OPT, cls.netmask),
-                   (dhcp.DHCP_DNS_SERVER_ADDR_OPT, cls.dns)]
+            options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, dhcp.DHCP_ACK),
+                    (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr),
+                    (dhcp.DHCP_SUBNET_MASK_OPT, cls.netmask),
+                    (dhcp.DHCP_DNS_SERVER_ADDR_OPT, cls.dns)]
 
-        ack_pkt = dhcp.dhcp(bootp_op=2,
-                            bootp_htype=1,
-                            bootp_hlen=6,
-                            bootp_xid=dhcp_pkt.xid,
-                            bootp_secs=dhcp_pkt.secs,
-                            bootp_flags=dhcp_pkt.flags,
-                            bootp_ciaddr=ip.src,
-                            bootp_yiaddr=dhcp_pkt.yiaddr,
-                            bootp_siaddr=cls.hardware_addr,
-                            bootp_giaddr=dhcp_pkt.giaddr,
-                            chaddr=eth.src,
-                            options=options)
+            ack_pkt = dhcp.dhcp(bootp_op=2,
+                                bootp_htype=1,
+                                bootp_hlen=6,
+                                bootp_xid=dhcp_pkt.xid,
+                                bootp_secs=dhcp_pkt.secs,
+                                bootp_flags=dhcp_pkt.flags,
+                                bootp_ciaddr=ip.src,
+                                bootp_yiaddr=dhcp_pkt.yiaddr,
+                                bootp_siaddr=cls.hardware_addr,
+                                bootp_giaddr=dhcp_pkt.giaddr,
+                                chaddr=eth.src,
+                                options=options)
+        else:
+
+            options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, 6), # NAK
+                    (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr)]
+
+            ack_pkt = dhcp.dhcp(bootp_op=2,
+                                bootp_htype=1,
+                                bootp_hlen=6,
+                                bootp_xid=dhcp_pkt.xid,
+                                bootp_secs=dhcp_pkt.secs,
+                                bootp_flags=dhcp_pkt.flags,
+                                bootp_siaddr=cls.hardware_addr,
+                                chaddr=eth.src,
+                                options=options)
 
         return ack_pkt
 
@@ -74,7 +96,8 @@ class DHCPServer():
         new_ip = cls.get_available_ip()
         
         if new_ip == None:
-            options = [(dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr)]
+            options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, 6), # dhcp.DHCP_NAK
+                       (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr)]
 
             offer_pkt = dhcp.dhcp(bootp_op=2,
                 bootp_htype=1,
