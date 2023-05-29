@@ -71,8 +71,7 @@ class DHCPServer():
         new_ip = cls.get_available_ip()
         
         if new_ip == None:
-            options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, 4),
-           (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr)]
+            options = [(dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr)]
 
             offer_pkt = dhcp.dhcp(bootp_op=2,
                 bootp_htype=1,
@@ -80,7 +79,6 @@ class DHCPServer():
                 bootp_xid=dhcp_pkt.xid,
                 bootp_secs=dhcp_pkt.secs,
                 bootp_flags=dhcp_pkt.flags,
-                bootp_ciaddr=ip.src,
                 chaddr=eth.src,
                 options=options)
         else:
