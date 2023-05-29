@@ -7,6 +7,8 @@ from ryu.lib.packet import dhcp
 from ofctl_utilis import *
 import array
 
+# Ref: https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol
+
 
 class Config():
     controller_macAddr = '7e:49:b3:f0:f9:99' # don't modify, a dummy mac address for fill the mac enrty
@@ -34,6 +36,7 @@ class DHCPServer():
     @classmethod
     def assemble_ack(cls, pkt, datapath, port):
         # TODO: Generate DHCP ACK packet here
+        # TODO: Check if the ip addr is avaliable
         
         eth = pkt.get_protocol(ethernet.ethernet)
         ip = pkt.get_protocol(ipv4.ipv4)
@@ -139,13 +142,23 @@ class DHCPServer():
     
     @classmethod
     def get_available_ip(cls):
-        # TODO: Implement a method to get an available IP
         if (cls.start_ip_int&cls.netmask_int) != (cls.end_ip_int&cls.netmask_int):
             return None
         for i in range(cls.start_ip_int, cls.end_ip_int + 1):
             posa = int((i-cls.start_ip_int) / 32)
             posb = (i-cls.start_ip_int) % 32
             if not(cls.used[posa] & (1<<posb)):
-                cls.used[posa] |= 1<<posb
                 return ipv4_int_to_text(i)
         return None
+    
+    @classmethod
+    def declare_use_ip(cls, ip):
+        ip_int = ipv4_text_to_int(ip)
+        if (cls.start_ip_int&cls.netmask_int) != (ip_int&cls.netmask_int):
+            return False
+        if cls.start_ip_int > ip_int or ip_int > cls.end_ip_int:
+            return False
+        posa = int((ip_int-cls.start_ip_int) / 32)
+        posb = (ip_int-cls.start_ip_int) % 32
+        cls.used[posa] |= 1<<posb
+        return True
