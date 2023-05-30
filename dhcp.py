@@ -11,11 +11,12 @@ import array
 
 
 class Config():
-    controller_macAddr = '7e:49:b3:f0:f9:99' # don't modify, a dummy mac address for fill the mac enrty
-    dns = '8.8.8.8' # don't modify, just for the dns entry
-    start_ip = '192.168.1.2' # can be modified
-    end_ip = '192.168.1.100' # can be modified
-    netmask = '255.255.255.0' # can be modified
+    # don't modify, a dummy mac address for fill the mac enrty
+    controller_macAddr = '7e:49:b3:f0:f9:99'
+    dns = '8.8.8.8'  # don't modify, just for the dns entry
+    start_ip = '192.168.1.2'  # can be modified
+    end_ip = '192.168.1.100'  # can be modified
+    netmask = '255.255.255.0'  # can be modified
 
     # You may use above attributes to configure your DHCP server.
     # You can also add more attributes like "lease_time" to support bouns function.
@@ -27,63 +28,97 @@ class DHCPServer():
     end_ip = Config.end_ip
     netmask = Config.netmask
     dns = Config.dns
-    
+
     start_ip_int = ipv4_text_to_int(start_ip)
     end_ip_int = ipv4_text_to_int(end_ip)
     netmask_int = ipv4_text_to_int(netmask)
     used = array.array('l', [0]*524289)
+    lease_time = 100
+
+    mac_ip_dict = {}
+    ip_mac_dict = {}
+
+    @classmethod
+    def __init__(cls):
+        cls.my_ip = cls.get_available_ip()
+        cls.declare_use_ip(cls.my_ip)
+
+    @classmethod
+    def nack_pkt(cls, dhcp_pkt, eth_pkt):
+
+        options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, 6),  # NAK
+                   (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr)]
+
+        pkt = dhcp.dhcp(op=2,
+                        htype=1,
+                        hlen=6,
+                        xid=dhcp_pkt.xid,
+                        secs=dhcp_pkt.secs,
+                        flags=dhcp_pkt.flags,
+                        siaddr=cls.hardware_addr,
+                        chaddr=eth_pkt.src,
+                        boot_file=dhcp_pkt.boot_file,
+                        options=options)
+        return pkt
+
+    @classmethod
+    def ack_pkt(cls, dhcp_pkt, eth_pkt, new_ip):
+        options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, dhcp.DHCP_OFFER),
+                   (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr),
+                   (dhcp.DHCP_SUBNET_MASK_OPT, cls.netmask),
+                   (dhcp.DHCP_GATEWAY_ADDR_OPT, cls.my_ip),
+                   (dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT, cls.lease_time),
+                   (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.my_ip),
+                   (dhcp.DHCP_DNS_SERVER_ADDR_OPT, cls.dns)]
+
+        pkt = dhcp.dhcp(op=2,
+                        htype=1,
+                        hlen=6,
+                        xid=dhcp_pkt.xid,
+                        secs=dhcp_pkt.secs,
+                        flags=dhcp_pkt.flags,
+                        ciaddr=0,
+                        yiaddr=new_ip,
+                        siaddr=cls.hardware_addr,
+                        giaddr=dhcp_pkt.giaddr,
+                        chaddr=eth_pkt.src,
+                        boot_file=dhcp_pkt.boot_file,
+                        options=options)
+        return pkt
 
     @classmethod
     def assemble_ack(cls, pkt, datapath, port):
         # TODO: Generate DHCP ACK packet here
         # TODO: Check if the ip addr is avaliable
-        
+
         eth = pkt.get_protocol(ethernet.ethernet)
         ip = pkt.get_protocol(ipv4.ipv4)
         dhcp_pkt = pkt.get_protocol(dhcp.dhcp)
-        
+
         req_ip = "0.0.0.0"
-        
+
         for opts in dhcp_pkt.options:
             if opts[0] == dhcp.DHCP_REQUESTED_IP_ADDR_OPT:
-                req_ip = opts[1]
-        
+                req_ip = str(opts[1])
+
         if cls.declare_use_ip(req_ip):
-
-            options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, dhcp.DHCP_ACK),
-                    (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr),
-                    (dhcp.DHCP_SUBNET_MASK_OPT, cls.netmask),
-                    (dhcp.DHCP_DNS_SERVER_ADDR_OPT, cls.dns)]
-
-            ack_pkt = dhcp.dhcp(bootp_op=2,
-                                bootp_htype=1,
-                                bootp_hlen=6,
-                                bootp_xid=dhcp_pkt.xid,
-                                bootp_secs=dhcp_pkt.secs,
-                                bootp_flags=dhcp_pkt.flags,
-                                bootp_ciaddr=ip.src,
-                                bootp_yiaddr=dhcp_pkt.yiaddr,
-                                bootp_siaddr=cls.hardware_addr,
-                                bootp_giaddr=dhcp_pkt.giaddr,
-                                chaddr=eth.src,
-                                options=options)
+            cls.mac_ip_dict[eth.src] = req_ip
+            cls.ip_mac_dict[req_ip] = eth.src
+            ack_pkt = cls.ack_pkt(dhcp_pkt, eth, req_ip)
         else:
+            ack_pkt = cls.nack_pkt(dhcp_pkt, eth)
+        return cls.convert_to_ethernet(ack_pkt)
 
-            options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, 6), # NAK
-                    (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr)]
-
-            ack_pkt = dhcp.dhcp(bootp_op=2,
-                                bootp_htype=1,
-                                bootp_hlen=6,
-                                bootp_xid=dhcp_pkt.xid,
-                                bootp_secs=dhcp_pkt.secs,
-                                bootp_flags=dhcp_pkt.flags,
-                                bootp_siaddr=cls.hardware_addr,
-                                chaddr=eth.src,
-                                options=options)
-
-        return ack_pkt
-
+    @classmethod
+    def assemble_leasetime_ack(cls, pkt, datapath, port):
+        eth = pkt.get_protocol(ethernet.ethernet)
+        ip = pkt.get_protocol(ipv4.ipv4)
+        dhcp_pkt = pkt.get_protocol(dhcp.dhcp)
+        c_ip = cls.mac_ip_dict.get(eth.src, None)
+        if c_ip != None:
+            return cls.convert_to_ethernet(cls.ack_pkt(dhcp_pkt, eth, c_ip))
+        else:
+            return cls.convert_to_ethernet(cls.nack_pkt(dhcp_pkt, eth))
 
     @classmethod
     def assemble_offer(cls, pkt, datapath):
@@ -92,44 +127,14 @@ class DHCPServer():
         ip = pkt.get_protocol(ipv4.ipv4)
         dhcp_pkt = pkt.get_protocol(dhcp.dhcp)
 
-        
         new_ip = cls.get_available_ip()
-        
+
         if new_ip == None:
-            options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, 6), # dhcp.DHCP_NAK
-                       (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr)]
-
-            offer_pkt = dhcp.dhcp(bootp_op=2,
-                bootp_htype=1,
-                bootp_hlen=6,
-                bootp_xid=dhcp_pkt.xid,
-                bootp_secs=dhcp_pkt.secs,
-                bootp_flags=dhcp_pkt.flags,
-                chaddr=eth.src,
-                options=options)
+            offer_pkt = cls.nack_pkt(dhcp_pkt, eth)
         else:
-            
-            options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, dhcp.DHCP_OFFER),
-                    (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.hardware_addr),
-                    (dhcp.DHCP_SUBNET_MASK_OPT, cls.netmask),
-                    (dhcp.DHCP_DNS_SERVER_ADDR_OPT, cls.dns)]
+            offer_pkt = cls.ack_pkt(dhcp_pkt, eth, new_ip)
 
-            offer_pkt = dhcp.dhcp(bootp_op=2,
-                                bootp_htype=1,
-                                bootp_hlen=6,
-                                bootp_xid=dhcp_pkt.xid,
-                                bootp_secs=dhcp_pkt.secs,
-                                bootp_flags=dhcp_pkt.flags,
-                                bootp_ciaddr=0,
-                                bootp_yiaddr=new_ip,
-                                bootp_siaddr=cls.hardware_addr,
-                                bootp_giaddr=dhcp_pkt.giaddr,
-                                chaddr=eth.src,
-                                options=options)
-
-        return offer_pkt
-
-
+        return cls.convert_to_ethernet(offer_pkt)
 
     @classmethod
     def handle_dhcp(cls, datapath, port, pkt):
@@ -139,13 +144,20 @@ class DHCPServer():
         # Finally send the generated packet to the host by using _send_packet method
 
         dhcp_pkt = pkt.get_protocol(dhcp.dhcp)
-        if dhcp_pkt.op == dhcp.DHCP_DISCOVER:
-            offer_pkt = cls.assemble_offer(pkt, datapath)
-            cls._send_packet(datapath, port, offer_pkt)
-        elif dhcp_pkt.op == dhcp.DHCP_REQUEST:
-            ack_pkt = cls.assemble_ack(pkt, datapath, port)
-            cls._send_packet(datapath, port, ack_pkt)
 
+        is_renew = False
+        for opts in dhcp_pkt.options:
+            if opts[0] == dhcp.DHCP_REQUESTED_IP_ADDR_OPT:
+                is_renew = True
+
+        if dhcp_pkt.op == dhcp.DHCP_DISCOVER:
+            reply_pkt = cls.assemble_offer(pkt, datapath)
+        elif dhcp_pkt.op == dhcp.DHCP_REQUEST:
+            if is_renew:
+                reply_pkt = cls.assemble_leasetime_ack(pkt, datapath, port)
+            else:
+                reply_pkt = cls.assemble_ack(pkt, datapath, port)
+        cls._send_packet(datapath, port, reply_pkt)
 
     @classmethod
     def _send_packet(cls, datapath, port, pkt):
@@ -162,26 +174,35 @@ class DHCPServer():
                                   actions=actions,
                                   data=data)
         datapath.send_msg(out)
-    
+
     @classmethod
     def get_available_ip(cls):
-        if (cls.start_ip_int&cls.netmask_int) != (cls.end_ip_int&cls.netmask_int):
+        if (cls.start_ip_int & cls.netmask_int) != (cls.end_ip_int & cls.netmask_int):
             return None
         for i in range(cls.start_ip_int, cls.end_ip_int + 1):
             posa = int((i-cls.start_ip_int) / 32)
             posb = (i-cls.start_ip_int) % 32
-            if not(cls.used[posa] & (1<<posb)):
+            if not (cls.used[posa] & (1 << posb)):
                 return ipv4_int_to_text(i)
         return None
-    
+
     @classmethod
     def declare_use_ip(cls, ip):
         ip_int = ipv4_text_to_int(ip)
-        if (cls.start_ip_int&cls.netmask_int) != (ip_int&cls.netmask_int):
+        if (cls.start_ip_int & cls.netmask_int) != (ip_int & cls.netmask_int):
             return False
         if cls.start_ip_int > ip_int or ip_int > cls.end_ip_int:
             return False
         posa = int((ip_int-cls.start_ip_int) / 32)
         posb = (ip_int-cls.start_ip_int) % 32
-        cls.used[posa] |= 1<<posb
+        cls.used[posa] |= 1 << posb
         return True
+
+    @classmethod
+    def convert_to_ethernet(cls, dhcp_pkt, udp_pkt: udp.udp, ip_pkt: ipv4.ipv4, eth_pkt: ethernet.ethernet):
+        pkt = packet.Packet()
+        pkt.add_protocol(ethernet.ethernet(ethertype=eth_pkt.ethertype, dst=eth_pkt.src, src=cls.hardware_addr))
+        pkt.add_protocol(ipv4.ipv4(dst=ip_pkt.src, src=cls.my_ip, proto=ip_pkt.proto))
+        pkt.add_protocol(udp.udp(src_port=udp_pkt.dst_port,dst_port=udp_pkt.src_port))
+        pkt.add_protocol(dhcp_pkt)
+        return pkt

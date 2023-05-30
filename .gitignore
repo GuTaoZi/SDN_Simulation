@@ -1,8 +1,9 @@
 # custom gitignore file for my projects
 sync.sh 
+.gitignore
 
 ### VisualStudioCode template
-.vscode/*
+.vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
