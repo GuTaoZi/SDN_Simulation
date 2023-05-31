@@ -127,11 +127,11 @@ In this test case, the topology structure is in a shape of binary tree, with 7 s
 
 The flow table is:
 
-![tree.png](./tests/switching_test/test_tree.png)
+![](https://github.com/GuTaoZi/SDN_Simulation/raw/main/tests/switching_test/test_tree.png)
 
 And the `pingall` output is:
 
-
+<img src="https://s2.loli.net/2023/06/01/zvYt84oPilJNyrp.png" alt="image.png" style="zoom:50%;" />
 
 ### Robust topology
 
@@ -139,20 +139,13 @@ In this test case, the topology structure is more complex, shown as follows:
 
 The flow table is:
 
-![robust.png](./tests/switching_test/test_robo.png)
+![](https://github.com/GuTaoZi/SDN_Simulation/raw/main/tests/switching_test/test_robo.png)
 
 And the `pingall` output is:
 
-
+<img src="https://s2.loli.net/2023/06/01/9P7NViqn5gw3pyU.png" alt="image.png" style="zoom:50%;" />
 
 ## Bonus Tasks
-
-
-### implement details
-
-#### controller
-
-In controller, we write a class named `topo_manager`, that store the network topo graph. When a node(ether switch or host) add in or remove, we will update the graph and find new shortest path. For `arping`,
 
 #### DHCP
 

@@ -4,12 +4,40 @@ from ofctl_utilis import *
 from device import MyDevice
 import queue
 
+import networkx as nx
+import matplotlib.pyplot as plt
+
 class topo_manager:
+
+    def print_graph(self):
+        G = nx.Graph()
+        for vertex in self.vertex:
+            G.add_node(vertex)
+        for sw1 in self.graph.keys():
+            for adj in self.graph[sw1].keys():
+                G.add_edge(sw1,adj)
+
+        # Define positions of nodes
+        pos = nx.spring_layout(G)
+
+        # Draw nodes and edges
+        nx.draw_networkx_nodes(G, pos)
+        nx.draw_networkx_edges(G, pos)
+
+        # Add labels to nodes
+        labels = self.devicename
+        nx.draw_networkx_labels(G, pos, labels)
+
+        # Show the plot
+        plt.show()
+
     def __init__(self):
         self.graph = {}
         self.vertex = []
         self.hosts = []
         self.switches = []
+        self.devicename = {}
+        self.host_count = 1
 
     def set_forwarding(self, datapath, dl_dst, port):
         ofctl = OfCtl.factory(dp=datapath, logger=None)
@@ -89,11 +117,13 @@ class topo_manager:
             for adj_sw in self.graph[host].keys():
                 port = self.graph[host][adj_sw]
                 self.set_forwarding(adj_sw.device.dp,host.device.mac,port.port_no)
+        self.print_graph()
 
     def switch_enter(self, switch):
         self.graph[switch] = {}
         self.vertex.append(switch)
         self.switches.append(switch)
+        self.devicename[switch] = (f"s{switch.device.dp.id}")
 
     def switch_leave(self, switch):
         if (switch not in self.vertex):
@@ -104,6 +134,7 @@ class topo_manager:
         self.vertex.remove(switch)
         self.switches.remove(switch)
         del self.graph[switch]
+        del self.devicename[switch]
         if(self.switches==[]):
             self.__init__()
 
@@ -114,8 +145,8 @@ class topo_manager:
         self.build(switch, host, port)
         self.build(host, switch, port)
         self.set_forwarding(switch.device.dp, host.device.mac, port.port_no)
-        if(self.hosts==[]):
-            self.__init__()
+        self.host_count += 1
+        self.devicename[host] = (f"h{self.host_count}")
 
     def link_add(self, dev1, dev2, port1, port2):
         self.build(dev1, dev2, port1)
