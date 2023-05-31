@@ -41,11 +41,12 @@ class DHCPServer():
     
     used = array.array('l', [0]*2049)
     used_time = array.array('L', [0]*65537)
-    lease_time = '00010000' # 65536s
-    lease_time_int = 65536
+    lease_time = '00000020' # 32s
+    lease_time_int = 32
     
     my_ip = None
     my_ip_bin = None
+    my_ip_int = None
 
     mac_ip_dict = {}
     ip_mac_dict = {}
@@ -55,6 +56,7 @@ class DHCPServer():
         cls.my_ip = cls.get_available_ip()
         print("my_ip", cls.my_ip)
         cls.declare_use_ip(cls.my_ip)
+        cls.my_ip_int = ipv4_text_to_int(cls.my_ip)
         cls.my_ip_bin = addrconv.ipv4.text_to_bin(cls.my_ip)
 
     @classmethod
@@ -236,6 +238,8 @@ class DHCPServer():
         if (cls.start_ip_int & cls.netmask_int) != (cls.end_ip_int & cls.netmask_int):
             return None
         for i in range(cls.start_ip_int, cls.end_ip_int + 1):
+            if i == cls.my_ip_int:
+                continue
             posa = int((i-cls.start_ip_int) / 32)
             posb = (i-cls.start_ip_int) % 32
             if (not (cls.used[posa] & (1 << posb))) or (datetime.now().timestamp() - cls.used_time[i - cls.start_ip_int] >= cls.lease_time_int):
@@ -246,6 +250,8 @@ class DHCPServer():
     def declare_use_ip(cls, ip):
         print("declare")
         ip_int = ipv4_text_to_int(ip)
+        if ip_int == cls.my_ip_int:
+            return False
         if (cls.start_ip_int & cls.netmask_int) != (ip_int & cls.netmask_int):
             return False
         if cls.start_ip_int > ip_int or ip_int > cls.end_ip_int:
