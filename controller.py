@@ -13,8 +13,9 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import udp
 from dhcp import DHCPServer
 
-from graph import *
-from device import *
+from device import MyDevice
+from topo_manager import topo_manager
+
 
 class ControllerApp(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
@@ -22,6 +23,7 @@ class ControllerApp(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(ControllerApp, self).__init__(*args, **kwargs)
         self.topo = topo_manager()
+        self.arp_table = {}
 
     @set_ev_cls(event.EventSwitchEnter)
     def handle_switch_add(self, ev: event.EventSwitchEnter):
@@ -31,50 +33,47 @@ class ControllerApp(app_manager.RyuApp):
         new_switch = MyDevice(ev.switch)
         print(f"adding switch {ev.switch.dp.id}")
         self.topo.switch_enter(new_switch)
-        
 
     @set_ev_cls(event.EventSwitchLeave)
-    def handle_switch_delete(self, ev:event.EventSwitchLeave):
+    def handle_switch_delete(self, ev: event.EventSwitchLeave):
         """
         Event handler indicating a switch has been removed
         """
         print(f"deleting switch {ev.switch.dp.id}")
         for switch in self.topo.switches:
-            if(switch.device.dp.id==ev.switch.dp.id):
+            if (switch.device.dp.id == ev.switch.dp.id):
                 self.topo.switch_leave(switch)
                 break
-
 
     @set_ev_cls(event.EventHostAdd)
     def handle_host_add(self, ev: event.EventHostAdd):
         """
         Event handler indiciating a host has joined the network
         This handler is automatically triggered when a host sends an ARP response.
-        """ 
+        """
         # TODO:  Update network topology and flow rules
         print(f"adding host {ev.host.mac}")
         new_host = MyDevice(ev.host)
         port = ev.host.port
         for switch in self.topo.switches:
-            if(switch.device.dp.id==port.dpid):
-                self.topo.host_add(new_host,switch,port)
+            if (switch.device.dp.id == port.dpid):
+                self.topo.host_add(new_host, switch, port)
                 break
         self.topo.update_topology()
-        
 
     @set_ev_cls(event.EventLinkAdd)
-    def handle_link_add(self, ev:event.EventLinkAdd):
+    def handle_link_add(self, ev: event.EventLinkAdd):
         """
         Event handler indicating a link between two switches has been added
         """
         # TODO:  Update network topology and flow rules
         print(f"adding link {ev.link.src.dpid}->{ev.link.dst.dpid}")
         for switch in self.topo.switches:
-            if(switch.device.dp.id==ev.link.src.dpid):
-                src_switch=switch
-            if(switch.device.dp.id==ev.link.dst.dpid):
-                dst_switch=switch
-        self.topo.link_add(src_switch,dst_switch,ev.link.src,ev.link.dst)
+            if (switch.device.dp.id == ev.link.src.dpid):
+                src_switch = switch
+            if (switch.device.dp.id == ev.link.dst.dpid):
+                dst_switch = switch
+        self.topo.link_add(src_switch, dst_switch, ev.link.src, ev.link.dst)
         self.topo.update_topology()
 
     @set_ev_cls(event.EventLinkDelete)
@@ -85,17 +84,15 @@ class ControllerApp(app_manager.RyuApp):
         # TODO:  Update network topology and flow rules
         print(f"deleting link {ev.link.src.dipid}->{ev.link.dst.dpid}")
         for switch in self.topo.switches:
-            if(switch.device.dp.id==ev.link.src.dpid):
-                src_switch=switch
-            if(switch.device.dp.id==ev.link.dst.dpid):
-                dst_switch=switch
-        self.topo.link_delete(src_switch,dst_switch,ev.link.src,ev.link.dst)
+            if (switch.device.dp.id == ev.link.src.dpid):
+                src_switch = switch
+            if (switch.device.dp.id == ev.link.dst.dpid):
+                dst_switch = switch
+        self.topo.link_delete(src_switch, dst_switch, ev.link.src, ev.link.dst)
         self.topo.update_topology()
-   
-        
 
     @set_ev_cls(event.EventPortModify)
-    def handle_port_modify(self, ev:event.EventPortModify):
+    def handle_port_modify(self, ev: event.EventPortModify):
         """
         Event handler for when any switch port changes state.
         This includes links for hosts as well as links between switches.
@@ -103,10 +100,29 @@ class ControllerApp(app_manager.RyuApp):
         # TODO:  Update network topology and flow rules
         print(f"modifying port {ev.port.dpid} {ev.port.port_no}")
         for switch in self.topo.switches:
-            if(switch.device.dp.id==ev.port.port_dpid):
+            if (switch.device.dp.id == ev.port.port_dpid):
                 break
-        self.topo.port_modify(ev.port,ev.port._state)
+        self.topo.port_modify(ev.port, ev.port._state)
         self.topo.update_topology()
+
+    def handle_arp(self, datapath, eth, arp_pkt, in_port):
+        r = self.arp_table.get(arp_pkt.dst_ip)
+        if r:
+            arp_resp = packet.Packet()
+            arp_resp.add_protocol(ethernet.ethernet(ethertype=eth.ethertype,
+                                  dst=eth.src, src=r))
+            arp_resp.add_protocol(arp.arp(opcode=arp.ARP_REPLY,
+                                  src_mac=r, src_ip=arp_pkt.dst_ip,
+                                  dst_mac=arp_pkt.src_mac,
+                                  dst_ip=arp_pkt.src_ip))
+            arp_resp.serialize()
+            parser = datapath.ofproto_parser  
+            actions = [parser.OFPActionOutput(in_port)]
+            ofproto = datapath.ofproto
+            
+            out = parser.OFPPacketOut(datapath=datapath, buffer_id=ofproto.OFP_NO_BUFFER,
+                                  in_port=ofproto.OFPP_CONTROLLER, actions=actions, data=arp_resp)
+            datapath.send_msg(out)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in_handler(self, ev):
@@ -114,15 +130,19 @@ class ControllerApp(app_manager.RyuApp):
             msg = ev.msg
             datapath = msg.datapath
             pkt = packet.Packet(data=msg.data)
-            pkt_dhcp = pkt.get_protocols(dhcp.dhcp)
             inPort = msg.in_port
-            if not pkt_dhcp:
-                # TODO: handle other protocols like ARP 
-                pass
-            else:
-                print("+++ DHCP packet received")
-                DHCPServer.handle_dhcp(datapath, inPort, pkt)      
-            return 
+            if pkt.get_protocols(dhcp.dhcp):
+                print(f"+++ DHCP packet received")
+                DHCPServer.handle_dhcp(datapath, inPort, pkt)
+            elif pkt.get_protocols(arp.arp):
+                print(f"+++ ARP packet received")
+                arp_pkt = pkt.get_protocol(arp.arp)
+                if (arp_pkt.src_ip != '0.0.0.0'):
+                    self.arp_table[arp_pkt.src_ip] = arp_pkt.src_mac
+                    print(f"IP\tMAC")
+                    print(f"{arp_pkt.src_ip}\t{arp_pkt.src_mac}")
+                    print(f"{arp_pkt.dst_ip}\t{arp_pkt.dst_mac}")
+                self.handle_arp(datapath, pkt.get_protocol(ethernet.ethernet), arp_pkt, inPort)
+            return
         except Exception as e:
             self.logger.error(e)
-    
