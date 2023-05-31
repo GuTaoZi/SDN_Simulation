@@ -41,7 +41,7 @@ SDN_Simulation
 
 ## Task 1: DHCP
 
-In DHCP, the main function is replying for `DISCOVER` and `REQUEST`. If it is a `DISCOVER`, then find an unused IP address and reply it as a `OFFER`. If it is a `REQUEST`, then claim that IP is used and reply with a `ACK`. Besides the basic function, we add `lease duration` in DHCP's options, this means after a specific time, the IP address will be recycled. After that, the client should send an `REQUEST` to further use this IP. The DHCP Server itself will create an IP pool to know which IP was used so it will not allocate duplicate IP.
+In DHCP, the main function is replying for `DISCOVER` and `REQUEST`. If it is a `DISCOVER`, then find an unused IP address and reply it as a `OFFER`. If it is a `REQUEST`, then claim that IP is used and reply with a `ACK`. We write two functions: `ack_pkt` & `nack_pkt` to constract two different DHCP packet. `handle_dhcp` will distribute the packet to each handler.
 
 ## Task 2: Shortest-Path Switching
 
@@ -127,7 +127,7 @@ In this test case, the topology structure is in a shape of binary tree, with 7 s
 
 The flow table is:
 
-![image.png](https://s2.loli.net/2023/06/01/wA6se4pDJUVybcq.png)
+<img src="https://s2.loli.net/2023/06/01/wA6se4pDJUVybcq.png" alt="image.png" style="zoom:50%;" />
 
 And the `pingall` output is:
 
@@ -139,7 +139,7 @@ In this test case, the topology structure is more complex, shown as follows:
 
 The flow table is:
 
-![image.png](https://s2.loli.net/2023/06/01/FBsvAfgQK2wnqxa.png)
+<img src="https://s2.loli.net/2023/06/01/FBsvAfgQK2wnqxa.png" alt="image.png" style="zoom:33%;" />
 
 And the `pingall` output is:
 
@@ -147,10 +147,8 @@ And the `pingall` output is:
 
 ## Bonus Tasks
 
-#### DHCP
+### DHCP
 
+Besides the basic function, we add `lease duration` in DHCP's options, this means after a specific time, the IP address will be recycled. After that, the client should send an `REQUEST` to further use this IP.
 
-
-### Complex testcase
-
-see `test2.py` & `test_tree.py`
+The DHCP Server itself will create an IP pool to know which IP was used so it will not allocate duplicate IP. And `get_avaliable_ip` can get a IP that no one use(or exceed lease time), `declare_use_ip` will confirm that a host will use a IP.
