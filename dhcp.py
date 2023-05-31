@@ -5,6 +5,8 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import udp
 from ryu.lib.packet import dhcp
 from ofctl_utilis import *
+import binascii
+import ipaddress
 import array
 
 # Ref: https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol
@@ -37,7 +39,7 @@ class DHCPServer():
     dns_bin = addrconv.ipv4.text_to_bin(dns)
     
     used = array.array('l', [0]*524289)
-    lease_time = b'\x00\x00\x10\x00'
+    lease_time = '00010000'
     
     my_ip = None
     my_ip_bin = None
@@ -56,7 +58,7 @@ class DHCPServer():
     def nack_pkt(cls, dhcp_pkt, eth_pkt):
         print("nack_pkt")
 
-        options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, 6),  # NAK
+        options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, binascii.a2b_hex('06')),  # NAK
                    (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.my_ip_bin)]
 
         pkt = dhcp.dhcp(op=2,
@@ -79,13 +81,13 @@ class DHCPServer():
         return pkt
 
     @classmethod
-    def ack_pkt(cls, dhcp_pkt, eth_pkt, new_ip):
+    def ack_pkt(cls, dhcp_pkt, eth_pkt, new_ip, op):
         print("ack_pkt")
-        options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, dhcp.DHCP_OFFER),
+        options = [(dhcp.DHCP_MESSAGE_TYPE_OPT, binascii.a2b_hex(op)),
                    (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.my_ip_bin),
                    (dhcp.DHCP_SUBNET_MASK_OPT, cls.netmask_bin),
                    (dhcp.DHCP_GATEWAY_ADDR_OPT, cls.my_ip_bin),
-                   (dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT, cls.lease_time),
+                   (dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT, binascii.a2b_hex(cls.lease_time)),
                    (dhcp.DHCP_SERVER_IDENTIFIER_OPT, cls.my_ip_bin),
                    (dhcp.DHCP_DNS_SERVER_ADDR_OPT, cls.dns_bin)]
 
@@ -126,13 +128,15 @@ class DHCPServer():
 
         for opts in dhcp_pkt.options.option_list :
             if opts.tag == dhcp.DHCP_REQUESTED_IP_ADDR_OPT:
-                req_ip = str(opts[1])
+                req_ip = str(ipaddress.IPv4Address(opts.value))
+        
+        print(req_ip)
         
 
         if cls.declare_use_ip(req_ip):
             cls.mac_ip_dict[eth.src] = req_ip
             cls.ip_mac_dict[req_ip] = eth.src
-            ack_pkt = cls.ack_pkt(dhcp_pkt, eth, req_ip)
+            ack_pkt = cls.ack_pkt(dhcp_pkt, eth, req_ip, '05')
         else:
             ack_pkt = cls.nack_pkt(dhcp_pkt, eth)
         return cls.convert_to_ethernet(ack_pkt, udp_pkt, ip, eth)
@@ -146,7 +150,7 @@ class DHCPServer():
         dhcp_pkt = pkt.get_protocol(dhcp.dhcp)
         c_ip = cls.mac_ip_dict.get(eth.src, None)
         if c_ip != None:
-            return cls.convert_to_ethernet(cls.ack_pkt(dhcp_pkt, eth, c_ip), udp_pkt, ip, eth)
+            return cls.convert_to_ethernet(cls.ack_pkt(dhcp_pkt, eth, c_ip, '05'), udp_pkt, ip, eth)
         else:
             return cls.convert_to_ethernet(cls.nack_pkt(dhcp_pkt, eth), udp_pkt, ip, eth)
 
@@ -164,14 +168,14 @@ class DHCPServer():
         if new_ip == None:
             offer_pkt = cls.nack_pkt(dhcp_pkt, eth)
         else:
-            offer_pkt = cls.ack_pkt(dhcp_pkt, eth, new_ip)
+            offer_pkt = cls.ack_pkt(dhcp_pkt, eth, new_ip, '02')
 
         pkt = cls.convert_to_ethernet(offer_pkt, udp_pkt, ip, eth)
         return pkt
 
     @classmethod
     def handle_dhcp(cls, datapath, port, pkt):
-        
+        print("dhcp_handler")
         if cls.my_ip == None:
             cls.__init__()
         # TODO: Specify the type of received DHCP packet
@@ -183,22 +187,27 @@ class DHCPServer():
         
         dhcp_pkt : dhcp.dhcp
         
-        # print(dhcp_pkt)
+        print(dhcp_pkt)
 
-        is_renew = False
+        is_renew = True
+        op = 0
         for opts in dhcp_pkt.options.option_list :
             if opts.tag == dhcp.DHCP_REQUESTED_IP_ADDR_OPT:
-                is_renew = True
+                is_renew = False
+            if opts.tag == dhcp.DHCP_MESSAGE_TYPE_OPT:
+                op = ord(opts.value)
 
-        if dhcp_pkt.op == dhcp.DHCP_DISCOVER:
+        if op == dhcp.DHCP_DISCOVER:
             print("DISCOVER -> OFFER")
             reply_pkt = cls.assemble_offer(pkt, datapath)
-        elif dhcp_pkt.op == dhcp.DHCP_REQUEST:
+        elif op == dhcp.DHCP_REQUEST:
             print("REQUEST -> ACK")
             if is_renew:
                 reply_pkt = cls.assemble_leasetime_ack(pkt, datapath, port)
             else:
                 reply_pkt = cls.assemble_ack(pkt, datapath, port)
+        else:
+            print("Ignore DHCP")
         cls._send_packet(datapath, port, reply_pkt)
 
     @classmethod
