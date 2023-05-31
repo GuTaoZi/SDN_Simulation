@@ -8,6 +8,7 @@ from ofctl_utilis import *
 import binascii
 import ipaddress
 import array
+from datetime import datetime
 
 # Ref: https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol
 
@@ -39,7 +40,9 @@ class DHCPServer():
     dns_bin = addrconv.ipv4.text_to_bin(dns)
     
     used = array.array('l', [0]*524289)
-    lease_time = '00010000'
+    used_time = array.array('L', [0]*65537)
+    lease_time = '00010000' # 65536s
+    lease_time_int = 65536
     
     my_ip = None
     my_ip_bin = None
@@ -129,9 +132,6 @@ class DHCPServer():
         for opts in dhcp_pkt.options.option_list :
             if opts.tag == dhcp.DHCP_REQUESTED_IP_ADDR_OPT:
                 req_ip = str(ipaddress.IPv4Address(opts.value))
-        
-        print(req_ip)
-        
 
         if cls.declare_use_ip(req_ip):
             cls.mac_ip_dict[eth.src] = req_ip
@@ -150,6 +150,7 @@ class DHCPServer():
         dhcp_pkt = pkt.get_protocol(dhcp.dhcp)
         c_ip = cls.mac_ip_dict.get(eth.src, None)
         if c_ip != None:
+            cls.declare_use_ip(c_ip)
             return cls.convert_to_ethernet(cls.ack_pkt(dhcp_pkt, eth, c_ip, '05'), udp_pkt, ip, eth)
         else:
             return cls.convert_to_ethernet(cls.nack_pkt(dhcp_pkt, eth), udp_pkt, ip, eth)
@@ -186,8 +187,6 @@ class DHCPServer():
         dhcp_pkt = pkt.get_protocol(dhcp.dhcp)
         
         dhcp_pkt : dhcp.dhcp
-        
-        print(dhcp_pkt)
 
         is_renew = True
         op = 0
@@ -218,8 +217,6 @@ class DHCPServer():
         parser = datapath.ofproto_parser
         if isinstance(pkt, str):
             pkt = pkt.encode()
-            
-        print(pkt)
         
         pkt : packet.Packet
         
@@ -241,7 +238,7 @@ class DHCPServer():
         for i in range(cls.start_ip_int, cls.end_ip_int + 1):
             posa = int((i-cls.start_ip_int) / 32)
             posb = (i-cls.start_ip_int) % 32
-            if not (cls.used[posa] & (1 << posb)):
+            if (not (cls.used[posa] & (1 << posb))) or (datetime.now().timestamp() - cls.used_time[i - cls.start_ip_int] >= cls.lease_time_int):
                 return ipv4_int_to_text(i)
         return None
 
@@ -256,6 +253,7 @@ class DHCPServer():
         posa = int((ip_int-cls.start_ip_int) / 32)
         posb = (ip_int-cls.start_ip_int) % 32
         cls.used[posa] |= 1 << posb
+        cls.used_time[ip_int - cls.start_ip_int] = int(datetime.now().timestamp())
         return True
 
     @classmethod
