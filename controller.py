@@ -45,6 +45,7 @@ class ControllerApp(app_manager.RyuApp):
             if (switch.device.dp.id == ev.switch.dp.id):
                 self.topo.switch_leave(switch)
                 break
+        self.topo.update_topology()
 
     @set_ev_cls(event.EventHostAdd)
     def handle_host_add(self, ev: event.EventHostAdd):
