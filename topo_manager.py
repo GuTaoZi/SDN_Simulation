@@ -86,6 +86,9 @@ class topo_manager:
             self.del_forwarding(switch.device.dp)
         for host in self.hosts:
             self.host_shortest_path(host)
+            for adj_sw in self.graph[host].keys():
+                port = self.graph[host][adj_sw]
+                self.set_forwarding(adj_sw.device.dp,host.device.mac,port.port_no)
 
     def switch_enter(self, switch):
         self.graph[switch] = {}

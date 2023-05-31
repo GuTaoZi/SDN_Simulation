@@ -111,18 +111,21 @@ class ControllerApp(app_manager.RyuApp):
         for key in self.arp_table.keys():
             print(key,self.arp_table[key])
         ofctl = OfCtl_v1_0(datapath, logger=None)
-        print(f"reply: IP\tMAC")
-        print(f"{arp_pkt.dst_ip}\t{self.arp_table[arp_pkt.dst_ip]}")
-        print(f"{arp_pkt.dst_ip}\t{arp_pkt.src_mac}")
-        ofctl.send_arp(arp_opcode=arp.ARP_REPLY,
-                       vlan_id=VLANID_NONE,
-                       dst_mac=arp_pkt.src_mac,
-                       sender_mac=self.arp_table[arp_pkt.dst_ip],
-                       sender_ip=arp_pkt.dst_ip,
-                       target_ip=arp_pkt.src_ip,
-                       target_mac=arp_pkt.src_mac,
-                       src_port=ofproto_v1_0.OFPP_CONTROLLER,
-                       output_port=msg.in_port)
+        for key in self.arp_table.keys():
+            senderip = key
+            sendermac = self.arp_table[key]
+            print(f"reply: IP\tMAC")
+            print(f"{key}\t{sendermac}")
+            print(f"{arp_pkt.src_ip}\t{arp_pkt.src_mac}")
+            ofctl.send_arp(arp_opcode=arp.ARP_REPLY,
+                        vlan_id=VLANID_NONE,
+                        dst_mac=arp_pkt.src_mac,
+                        sender_mac=sendermac,
+                        sender_ip=senderip,
+                        target_ip=arp_pkt.src_ip,
+                        target_mac=arp_pkt.src_mac,
+                        src_port=ofproto_v1_0.OFPP_CONTROLLER,
+                        output_port=msg.in_port)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in_handler(self, ev):
@@ -143,6 +146,8 @@ class ControllerApp(app_manager.RyuApp):
                     print(f"{arp_pkt.dst_ip}\t{arp_pkt.dst_mac}")
                     self.arp_table[arp_pkt.src_ip]=arp_pkt.src_mac
                     self.handle_arp(datapath=datapath,msg=msg,arp_pkt=arp_pkt)
+                if arp_pkt.opcode == arp.ARP_REPLY:
+                    print(f"reply received by controller")
             return
         except Exception as e:
             self.logger.error(e)
