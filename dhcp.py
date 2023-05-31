@@ -39,7 +39,7 @@ class DHCPServer():
     netmask_bin = addrconv.ipv4.text_to_bin(netmask)
     dns_bin = addrconv.ipv4.text_to_bin(dns)
     
-    used = array.array('l', [0]*524289)
+    used = array.array('l', [0]*2049)
     used_time = array.array('L', [0]*65537)
     lease_time = '00010000' # 65536s
     lease_time_int = 65536
