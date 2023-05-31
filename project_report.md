@@ -8,14 +8,12 @@ Project for SUSTech CS305 Computer Network.
 
 ## Contributors
 
-| SID      | Name                                              | Contributions | Contribution Rate |
-| -------- | ------------------------------------------------- | ------------- | ----------------- |
-| 12111624 | [GuTaoZi](https://github.com/GuTaoZi)             |               |                   |
-| 12112012 | [Jayfeather233](https://github.com/Jayfeather233) |               |                   |
+| SID      | Name                                              | Contributions      | Contribution Rate |
+| -------- | ------------------------------------------------- | ------------------ | ----------------- |
+| 12111624 | [GuTaoZi](https://github.com/GuTaoZi)             | Shortest path etc. | 50%               |
+| 12112012 | [Jayfeather233](https://github.com/Jayfeather233) | DHCP etc.          | 50%               |
 
 ## Project Structure
-
-- [ ] Update this part after implementation.
 
 ```cpp
 SDN_Simulation
@@ -88,7 +86,7 @@ The ways to handle these events are:
 
 ### Dijkstra
 
-We implement Dijkstra as the route scheduling algorithm, the pseudocode is shown as follows
+We implement Dijkstra as the route scheduling algorithm, the pseudocode is shown as follows:
 
 ```pseudocode
 function Dijkstra(graph, source):
@@ -119,16 +117,35 @@ function Dijkstra(graph, source):
     Return dist
 ```
 
+We output the next hop map after each round of Dijkstra by default, for the sake of checking the shortest route.
 
+## Testcases
+
+### Tree topology
+
+In this test case, the topology structure is in a shape of binary tree, with 7 switches and 8 hosts.
+
+The flow table is:
+
+![](https://github.com/GuTaoZi/SDN_Simulation/raw/main/tests/switching_test/test_tree.png)
+
+And the `pingall` output is:
+
+<img src="https://s2.loli.net/2023/06/01/zvYt84oPilJNyrp.png" alt="image.png" style="zoom:50%;" />
+
+### Robust topology
+
+In this test case, the topology structure is more complex, shown as follows:
+
+The flow table is:
+
+![](https://github.com/GuTaoZi/SDN_Simulation/raw/main/tests/switching_test/test_robo.png)
+
+And the `pingall` output is:
+
+<img src="https://s2.loli.net/2023/06/01/9P7NViqn5gw3pyU.png" alt="image.png" style="zoom:50%;" />
 
 ## Bonus Tasks
-
-
-### implement details
-
-#### controller
-
-In controller, we write a class named `topo_manager`, that store the network topo graph. When a node(ether switch or host) add in or remove, we will update the graph and find new shortest path. For `arping`,
 
 #### DHCP
 
