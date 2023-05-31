@@ -85,13 +85,13 @@ class ControllerApp(app_manager.RyuApp):
         Event handler indicating when a link between two switches has been deleted
         """
         # TODO:  Update network topology and flow rules
-        print(f"deleting link {ev.link.src.dipid}->{ev.link.dst.dpid}")
+        print(f"deleting link {ev.link.src.dpid}->{ev.link.dst.dpid}")
         for switch in self.topo.switches:
             if (switch.device.dp.id == ev.link.src.dpid):
                 src_switch = switch
             if (switch.device.dp.id == ev.link.dst.dpid):
                 dst_switch = switch
-        self.topo.link_delete(src_switch, dst_switch, ev.link.src, ev.link.dst)
+        self.topo.link_delete(src_switch, dst_switch)
         self.topo.update_topology()
 
     @set_ev_cls(event.EventPortModify)

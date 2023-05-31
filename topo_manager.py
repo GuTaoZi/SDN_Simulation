@@ -49,9 +49,9 @@ class topo_manager:
                         dist[adj_device] = dist[top] + 1
                         next_hop[adj_device] = (top, port)
                         q.put((dist[adj_device], adj_device))
-        # print(f"current next_hop table: ")
-        # for key in next_hop.keys():
-        #     print(f"{key.device.dp.id} -> {next_hop[key][0].device.dp.id}, {next_hop[key][1].port_no}")
+        print(f"current next_hop table: ")
+        for key in next_hop.keys():
+            print(f"{key.device.dp.id} -> {next_hop[key][0].device.dp.id}, {next_hop[key][1].port_no}")
         return dist, next_hop
 
     def host_shortest_path(self, host):
@@ -72,7 +72,7 @@ class topo_manager:
             if (adj_switch1 == adj_switch2):  # connecting to same switch
                 self.set_forwarding(adj_switch1.device.dp,
                                     dst_mac, host_port2.port_no)
-            while (it != adj_switch1):
+            while (it != adj_switch1 and it in next_hop.keys()):
                 former_switch, port = next_hop[it]
                 self.set_forwarding(former_switch.device.dp,
                                     dst_mac, port.port_no)
@@ -104,6 +104,8 @@ class topo_manager:
         self.vertex.remove(switch)
         self.switches.remove(switch)
         del self.graph[switch]
+        if(self.switches==[]):
+            self.__init__()
 
     def host_add(self, host, switch, port):
         self.graph[host] = {}
@@ -112,14 +114,22 @@ class topo_manager:
         self.build(switch, host, port)
         self.build(host, switch, port)
         self.set_forwarding(switch.device.dp, host.device.mac, port.port_no)
+        if(self.hosts==[]):
+            self.__init__()
 
     def link_add(self, dev1, dev2, port1, port2):
         self.build(dev1, dev2, port1)
         self.build(dev2, dev1, port2)
 
     def link_delete(self, dev1, dev2):
-        del self.graph[dev1][dev2]
-        del self.graph[dev2][dev1]
+        for key in self.graph[dev1].keys():
+            if(key==dev2):
+                self.graph[dev1].pop(key)
+                break
+        for key in self.graph[dev2].keys():
+            if(key==dev1):
+                self.graph[dev2].pop(key)
+                break
 
     def port_modify(self, port, state):
         for device in self.vertex:
