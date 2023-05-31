@@ -15,6 +15,7 @@ from dhcp import DHCPServer
 
 from device import MyDevice
 from topo_manager import topo_manager
+from ofctl_utilis import *
 
 
 class ControllerApp(app_manager.RyuApp):
@@ -55,6 +56,7 @@ class ControllerApp(app_manager.RyuApp):
         print(f"adding host {ev.host.mac}")
         new_host = MyDevice(ev.host)
         port = ev.host.port
+        self.arp_table[ev.host.ipv4[0]]=ev.host.mac
         for switch in self.topo.switches:
             if (switch.device.dp.id == port.dpid):
                 self.topo.host_add(new_host, switch, port)
@@ -105,24 +107,17 @@ class ControllerApp(app_manager.RyuApp):
         self.topo.port_modify(ev.port, ev.port._state)
         self.topo.update_topology()
 
-    def handle_arp(self, datapath, eth, arp_pkt, in_port):
-        r = self.arp_table.get(arp_pkt.dst_ip)
-        if r:
-            arp_resp = packet.Packet()
-            arp_resp.add_protocol(ethernet.ethernet(ethertype=eth.ethertype,
-                                  dst=eth.src, src=r))
-            arp_resp.add_protocol(arp.arp(opcode=arp.ARP_REPLY,
-                                  src_mac=r, src_ip=arp_pkt.dst_ip,
-                                  dst_mac=arp_pkt.src_mac,
-                                  dst_ip=arp_pkt.src_ip))
-            arp_resp.serialize()
-            parser = datapath.ofproto_parser  
-            actions = [parser.OFPActionOutput(in_port)]
-            ofproto = datapath.ofproto
-            
-            out = parser.OFPPacketOut(datapath=datapath, buffer_id=ofproto.OFP_NO_BUFFER,
-                                  in_port=ofproto.OFPP_CONTROLLER, actions=actions, data=arp_resp)
-            datapath.send_msg(out)
+    def handle_arp(self, datapath, msg, arp_pkt):
+        ofctl = OfCtl_v1_0(datapath, logger=None)
+        ofctl.send_arp(arp_opcode=2,
+                       vlan_id=VLANID_NONE,
+                       dst_mac=arp_pkt.src_mac,
+                       sender_mac=self.arp_table[arp_pkt.dst_ip]['mac'],
+                       sender_ip=arp_pkt.dst_ip,
+                       target_ip=arp_pkt.src_ip,
+                       target_mac=arp_pkt.src_mac,
+                       src_port=ofproto_v1_0.OFPP_CONTROLLER,
+                       output_port=msg.in_port)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in_handler(self, ev):
@@ -137,12 +132,11 @@ class ControllerApp(app_manager.RyuApp):
             elif pkt.get_protocols(arp.arp):
                 print(f"+++ ARP packet received")
                 arp_pkt = pkt.get_protocol(arp.arp)
-                if (arp_pkt.src_ip != '0.0.0.0'):
-                    self.arp_table[arp_pkt.src_ip] = arp_pkt.src_mac
+                if arp_pkt.opcode == arp.ARP_REQUEST:
                     print(f"IP\tMAC")
                     print(f"{arp_pkt.src_ip}\t{arp_pkt.src_mac}")
                     print(f"{arp_pkt.dst_ip}\t{arp_pkt.dst_mac}")
-                self.handle_arp(datapath, pkt.get_protocol(ethernet.ethernet), arp_pkt, inPort)
+                    self.handle_arp(datapath=datapath,msg=msg,arp_pkt=arp_pkt)
             return
         except Exception as e:
             self.logger.error(e)
