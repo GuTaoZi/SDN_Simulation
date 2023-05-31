@@ -127,7 +127,7 @@ In this test case, the topology structure is in a shape of binary tree, with 7 s
 
 The flow table is:
 
-
+![tree.png](./tests/switching_test/test_tree.png)
 
 And the `pingall` output is:
 
@@ -139,7 +139,7 @@ In this test case, the topology structure is more complex, shown as follows:
 
 The flow table is:
 
-
+![robust.png](./tests/switching_test/test_robo.png)
 
 And the `pingall` output is:
 
