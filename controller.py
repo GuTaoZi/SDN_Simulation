@@ -143,6 +143,8 @@ class ControllerApp(app_manager.RyuApp):
                     print(f"{arp_pkt.dst_ip}\t{arp_pkt.dst_mac}")
                     self.arp_table[arp_pkt.src_ip]=arp_pkt.src_mac
                     self.handle_arp(datapath=datapath,msg=msg,arp_pkt=arp_pkt)
+                if arp_pkt.opcode == arp.ARP_REPLY:
+                    print(f"reply received by controller")
             return
         except Exception as e:
             self.logger.error(e)
