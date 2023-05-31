@@ -127,7 +127,7 @@ In this test case, the topology structure is in a shape of binary tree, with 7 s
 
 The flow table is:
 
-![](https://github.com/GuTaoZi/SDN_Simulation/raw/main/tests/switching_test/test_tree.png)
+![image.png](https://s2.loli.net/2023/06/01/wA6se4pDJUVybcq.png)
 
 And the `pingall` output is:
 
@@ -139,7 +139,7 @@ In this test case, the topology structure is more complex, shown as follows:
 
 The flow table is:
 
-![](https://github.com/GuTaoZi/SDN_Simulation/raw/main/tests/switching_test/test_robo.png)
+![image.png](https://s2.loli.net/2023/06/01/FBsvAfgQK2wnqxa.png)
 
 And the `pingall` output is:
 
