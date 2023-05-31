@@ -8,14 +8,12 @@ Project for SUSTech CS305 Computer Network.
 
 ## Contributors
 
-| SID      | Name                                              | Contributions | Contribution Rate |
-| -------- | ------------------------------------------------- | ------------- | ----------------- |
-| 12111624 | [GuTaoZi](https://github.com/GuTaoZi)             |               |                   |
-| 12112012 | [Jayfeather233](https://github.com/Jayfeather233) |               |                   |
+| SID      | Name                                              | Contributions      | Contribution Rate |
+| -------- | ------------------------------------------------- | ------------------ | ----------------- |
+| 12111624 | [GuTaoZi](https://github.com/GuTaoZi)             | Shortest path etc. | 50%               |
+| 12112012 | [Jayfeather233](https://github.com/Jayfeather233) | DHCP etc.          | 50%               |
 
 ## Project Structure
-
-- [ ] Update this part after implementation.
 
 ```cpp
 SDN_Simulation
@@ -88,7 +86,7 @@ The ways to handle these events are:
 
 ### Dijkstra
 
-We implement Dijkstra as the route scheduling algorithm, the pseudocode is shown as follows
+We implement Dijkstra as the route scheduling algorithm, the pseudocode is shown as follows:
 
 ```pseudocode
 function Dijkstra(graph, source):
@@ -118,6 +116,32 @@ function Dijkstra(graph, source):
     
     Return dist
 ```
+
+We output the next hop map after each round of Dijkstra by default, for the sake of checking the shortest route.
+
+## Testcases
+
+### Tree topology
+
+In this test case, the topology structure is in a shape of binary tree, with 7 switches and 8 hosts.
+
+The flow table is:
+
+
+
+And the `pingall` output is:
+
+
+
+### Robust topology
+
+In this test case, the topology structure is more complex, shown as follows:
+
+The flow table is:
+
+
+
+And the `pingall` output is:
 
 
 
