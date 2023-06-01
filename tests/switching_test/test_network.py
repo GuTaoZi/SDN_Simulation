@@ -25,7 +25,7 @@ def send_dhcp(node):
 
 def do_arp_all(net):
     for h in net.hosts:
-        send_arp(h)
+        send_arp(h) 
 
 class TriangleTopo(Topo):
     def __init__(self, **opts):

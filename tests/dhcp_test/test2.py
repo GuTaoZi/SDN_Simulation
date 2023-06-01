@@ -19,7 +19,7 @@ def send_arp(node, count=1):
 
 def send_dhcp(node):
     print('Sending DHCP request dhclient -v %s-eth0 '% (node.name))
-    node.cmd('dhclient -v %s-eth0' % (node.name))
+    node.cmd('timeout 10s dhclient -v %s-eth0' % (node.name))
 
 
 def do_arp_all(net):

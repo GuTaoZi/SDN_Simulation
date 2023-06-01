@@ -17,8 +17,8 @@ class Config():
     # don't modify, a dummy mac address for fill the mac enrty
     controller_macAddr = '7e:49:b3:f0:f9:99'
     dns = '8.8.8.8'  # don't modify, just for the dns entry
-    start_ip = '192.168.1.2'  # can be modified
-    end_ip = '192.168.1.100'  # can be modified
+    start_ip = '10.0.0.1'  # can be modified
+    end_ip = '10.0.0.3'  # can be modified
     netmask = '255.255.255.0'  # can be modified
 
     # You may use above attributes to configure your DHCP server.
@@ -41,8 +41,8 @@ class DHCPServer():
     
     used = array.array('l', [0]*2049)
     used_time = array.array('L', [0]*65537)
-    lease_time = '00000020' # 32s
-    lease_time_int = 32
+    lease_time = '00000100' # 256s
+    lease_time_int = 256
     
     my_ip = None
     my_ip_bin = None
