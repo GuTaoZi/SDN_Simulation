@@ -64,6 +64,7 @@ class TriangleTopo(Topo):
         self.addLink(s6, h6)
         self.addLink(s7, h7)
         self.addLink(s7, h8)
+        self.addLink(s4, s6)
 
 
 def run_mininet():

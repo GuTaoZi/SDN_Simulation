@@ -83,19 +83,25 @@ class topo_manager:
         return dist, next_hop
 
     def host_shortest_path(self, host):
+        adj_switch1 = None
         for key in self.graph[host].keys():
             adj_switch1 = key
             host_port1 = self.graph[host][key]
             # print(f"src host {host.device.mac} connect to switch {adj_switch1.device.dp.id}")
+        if adj_switch1 == None:
+            return
         distance, next_hop = self.dijkstra(adj_switch1)
         for dst_host in self.hosts:
             if (dst_host == host):
                 continue
             dst_mac = dst_host.device.mac
+            adj_switch2 = None
             for key in self.graph[dst_host].keys():
                 adj_switch2 = key
                 host_port2 = self.graph[dst_host][key]
                 # print(f"dst host {dst_host.device.mac} connect to switch {adj_switch2.device.dp.id}")
+            if adj_switch2 == None:
+                continue
             it = adj_switch2
             if (adj_switch1 == adj_switch2):  # connecting to same switch
                 self.set_forwarding(adj_switch1.device.dp,
@@ -117,7 +123,7 @@ class topo_manager:
             for adj_sw in self.graph[host].keys():
                 port = self.graph[host][adj_sw]
                 self.set_forwarding(adj_sw.device.dp,host.device.mac,port.port_no)
-        self.print_graph()
+        # self.print_graph()
 
     def switch_enter(self, switch):
         self.graph[switch] = {}
@@ -151,6 +157,7 @@ class topo_manager:
     def link_add(self, dev1, dev2, port1, port2):
         self.build(dev1, dev2, port1)
         self.build(dev2, dev1, port2)
+        self.print_graph()
 
     def link_delete(self, dev1, dev2):
         for key in self.graph[dev1].keys():
@@ -161,6 +168,7 @@ class topo_manager:
             if(key==dev1):
                 self.graph[dev2].pop(key)
                 break
+        self.print_graph()
 
     def port_modify(self, port, state):
         for device in self.vertex:
