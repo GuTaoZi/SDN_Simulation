@@ -106,12 +106,17 @@ class topo_manager:
             if (adj_switch1 == adj_switch2):  # connecting to same switch
                 self.set_forwarding(adj_switch1.device.dp,
                                     dst_mac, host_port2.port_no)
+                # print(f"{self.devicename[host]}->{self.devicename[adj_switch1]}->{self.devicename[dst_host]}")
+                # return
+            # print(f"{self.devicename[dst_host]}")
             while (it != adj_switch1 and it in next_hop.keys()):
+                # print(f"<-{self.devicename[it]}")
                 former_switch, port = next_hop[it]
                 self.set_forwarding(former_switch.device.dp,
                                     dst_mac, port.port_no)
                 # print(f"forwarding: {former_switch.device.dp.id}:{port.port_no} -> {it.device.dp.id}, {dst_mac}")
                 it = former_switch
+            # print(f"<-{self.devicename[adj_switch1]}<-{self.devicename[host]}")
 
     def update_topology(self):
         # print(f"update_topology() invoked")
