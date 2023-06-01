@@ -86,11 +86,15 @@ class ControllerApp(app_manager.RyuApp):
         """
         # TODO:  Update network topology and flow rules
         print(f"deleting link {ev.link.src.dpid}->{ev.link.dst.dpid}")
+        src_switch = None
+        dst_switch = None
         for switch in self.topo.switches:
             if (switch.device.dp.id == ev.link.src.dpid):
                 src_switch = switch
             if (switch.device.dp.id == ev.link.dst.dpid):
                 dst_switch = switch
+        if(src_switch==None or dst_switch==None):
+            return
         self.topo.link_delete(src_switch, dst_switch)
         self.topo.update_topology()
 
@@ -103,7 +107,7 @@ class ControllerApp(app_manager.RyuApp):
         # TODO:  Update network topology and flow rules
         print(f"modifying port {ev.port.dpid} {ev.port.port_no}")
         for switch in self.topo.switches:
-            if (switch.device.dp.id == ev.port.port_dpid):
+            if (switch.device.dp.id == ev.port.dpid):
                 break
         self.topo.port_modify(ev.port, ev.port._state)
         self.topo.update_topology()

@@ -10,12 +10,15 @@ import matplotlib.pyplot as plt
 class topo_manager:
 
     def print_graph(self):
+        added = []
         G = nx.Graph()
         for vertex in self.vertex:
             G.add_node(vertex)
         for sw1 in self.graph.keys():
             for adj in self.graph[sw1].keys():
-                G.add_edge(sw1,adj)
+                if(sw1,adj) not in added and (adj,sw1) not in added:
+                    G.add_edge(sw1,adj)
+                    added.append((sw1,adj))
 
         # Define positions of nodes
         pos = nx.spring_layout(G)
@@ -37,7 +40,7 @@ class topo_manager:
         self.hosts = []
         self.switches = []
         self.devicename = {}
-        self.host_count = 1
+        self.host_count = 0
 
     def set_forwarding(self, datapath, dl_dst, port):
         ofctl = OfCtl.factory(dp=datapath, logger=None)
